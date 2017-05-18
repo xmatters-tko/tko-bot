@@ -1,0 +1,8 @@
+[
+  "hubot-diagnostics",
+  "hubot-help",
+  "hubot-heroku-keepalive",
+  "hubot-redis-brain",
+  "underscore",
+  "clark"
+]
