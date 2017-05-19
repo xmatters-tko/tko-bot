@@ -6,8 +6,7 @@ Uses Hubot brain and Hubot redis to store data.
 
 API
 ---
-#   hubot register <team> for http://<snake-app>.heroku.com - Register a <team> and <snake-app> on the leaderboard
-#   hubot list - List all of the team registrations on the leaderboard
+*   hubot register <team> for http://<snake-app>.heroku.com - Register a <team> and <snake-app> on the leaderboard
 *  `hubot win for <team>` - Scores a win for <team> on the leaderboard
 *  `hubot loss for <team>` - Scores a loss for <team> on the leaderboard
 *  `hubot score for <team>` - Display the scores for the <team>
