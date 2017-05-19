@@ -63,17 +63,10 @@ class ScoreKeeper
     @cache.scores[room][team]
 
   addTeam: (team, room, url) ->
-    if typeof @cache.scores[room] == "object"
-      if typeof @cache.scores[room][team] == "object"
-        return false
-
     if @validate(team, room)
       team = @getTeam(team, room)
-      @addTeamUrl(url, team, room)
+      @setTeamUrl(url, team, room)
       score = @saveTeam(team, room)
-      return true
-
-    return false
 
   win: (team, room) ->
     if @validate(team, room)
@@ -97,7 +90,7 @@ class ScoreKeeper
 
     @cache.scoreLog[room][team] = new Date()
 
-  addTeamUrl: (url, team, room) ->
+  setTeamUrl: (url, team, room) ->
     unless typeof @cache.teamUrls[room] == "object"
       @cache.teamUrls[room] = {}
 
@@ -157,9 +150,8 @@ module.exports = (robot) ->
     room = msg.message.room || 'escape'
     url = msg.match[3].trim()
 
-    added = scoreKeeper.addTeam(name, room, url)
-
-    if added then msg.send "Your team #{name} has been registered."
+    scoreKeeper.addTeam(name, room, url)
+    msg.send "Your team #{name} has been registered for #{url}."
 
   robot.respond /win (for\s)+?(.+)/i, (msg) ->
     name = msg.match[2].trim().toLowerCase()
