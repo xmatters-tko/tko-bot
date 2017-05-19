@@ -9,7 +9,6 @@
 #
 # Commands:
 #   hubot register <team> for http://<snake-app>.heroku.com - Register a <team> and <snake-app> on the leaderboard
-#   hubot list - List all of the team registrations on the leaderboard
 #   hubot win for <team> - Scores a win for <team> on the leaderboard
 #   hubot loss for <team> - Scores a loss for <team> on the leaderboard
 #   hubot score for <team> - Display the scores for the <team>
@@ -56,29 +55,39 @@ class ScoreKeeper
     @cache.teamUrls[room][team] ||= "EMPTY"
     team
 
-  saveTeam: (team, room) ->
-    @saveScoreLog(team, room)
+  save: (room) ->
     @robot.brain.data.scores[room] = @cache.scores[room]
     @robot.brain.data.scoreLog[room] = @cache.scoreLog[room]
     @robot.brain.data.teamUrls[room] = @cache.teamUrls[room]
     @robot.brain.emit('save', @robot.brain.data)
 
+  saveTeam: (team, room) ->
+    @saveScoreLog(team, room)
+    @save(room)
     @cache.scores[room][team]
+
+  removeTeam: (team, room) ->
+    if typeof @cache.scores[room] == "object"
+      delete @cache.scores[room][team]
+      delete @cache.scoreLog[room][team]
+      delete @cache.teamUrls[room][team]
+      @save(room)
 
   addTeam: (team, room, url) ->
     if @validate(team, room)
       team = @getTeam(team, room)
       @setTeamUrl(url, team, room)
-      score = @saveTeam(team, room)
+      @save(team, room)
+      @cache.scores[room][team]
 
   win: (team, room) ->
-    if @validate(team, room)
+    if @exists(team, room) && !@isSpam(team, room)
       team = @getTeam(team, room)
       @cache.scores[room][team]++
       @saveTeam(team, room)
 
   loss: (team, room) ->
-    if @validate(team, room)
+    if @exists(team, room) && !@isSpam(team, room)
       team = @getTeam(team, room)
       @cache.scores[room][team]--
       @saveTeam(team, room)
@@ -90,34 +99,38 @@ class ScoreKeeper
   saveScoreLog: (team, room) ->
     unless typeof @cache.scoreLog[room] == "object"
       @cache.scoreLog[room] = {}
-
     @cache.scoreLog[room][team] = new Date()
 
   setTeamUrl: (url, team, room) ->
     unless typeof @cache.teamUrls[room] == "object"
       @cache.teamUrls[room] = {}
-
     @cache.teamUrls[room][team] = url
 
   isSpam: (team, room) ->
     @cache.scoreLog[room] ||= {}
 
-    // spam if they are not registered
     if !@cache.scoreLog[room][team]
-      return true
+      return false
 
     dateSubmitted = @cache.scoreLog[room][team]
 
     date = new Date(dateSubmitted)
     messageIsSpam = date.setSeconds(date.getSeconds() + 30) > new Date()
 
-    if !messageIsSpam
-      delete @cache.scoreLog[room][team] #clean it up
+    # this makes no sense
+    #if !messageIsSpam
+    #  delete @cache.scoreLog[room][team] #clean it up
 
     messageIsSpam
 
+  exists: (team, room) ->
+    @cache.teamUrls[room] ||= {}
+    if !@cache.teamUrls[room][team]
+      return false
+    @validate(team, room)
+
   validate: (team, room) ->
-    team != room && team != "" && !@isSpam(team, room)
+    team != room && team != ""
 
   length: () ->
     @cache.scoreLog.length
@@ -210,3 +223,11 @@ module.exports = (robot) ->
       message.push("No registrations yet.")
 
     msg.send message.join("\n")
+
+  robot.respond /delete (.+)$/i, (msg) ->
+    name = msg.match[1].trim().toLowerCase()
+    room = msg.message.room || 'escape'
+
+    if name
+      scoreKeeper.removeTeam(name, room)
+      msg.send "#{name} deleted from list"
