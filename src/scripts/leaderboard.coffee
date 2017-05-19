@@ -1,5 +1,5 @@
 # Description
-#   A team leaderboard for keep score that are specific per room
+#   A team leaderboard for keeping scores that are specific per room, with team urls
 #
 # Dependencies:
 #   "underscore": ">= 1.0.0"
@@ -49,8 +49,11 @@ class ScoreKeeper
   getTeam: (team, room) ->
     unless typeof @cache.scores[room] == "object"
       @cache.scores[room] = {}
+    unless typeof @cache.teamUrls[room] == "object"
+      @cache.teamUrls[room] = {}
 
     @cache.scores[room][team] ||= 0
+    @cache.teamUrls[room][team] ||= "EMPTY"
     team
 
   saveTeam: (team, room) ->
@@ -99,8 +102,9 @@ class ScoreKeeper
   isSpam: (team, room) ->
     @cache.scoreLog[room] ||= {}
 
+    // spam if they are not registered
     if !@cache.scoreLog[room][team]
-      return false
+      return true
 
     dateSubmitted = @cache.scoreLog[room][team]
 
