@@ -8,7 +8,8 @@
 # Configuration:
 #
 # Commands:
-#   hubot register for <team> - Register a <team> on the leaderboard
+#   hubot register <team> for http://<snake-app>.heroku.com - Register a <team> and <snake-app> on the leaderboard
+#   hubot list - List all of the team registrations on the leaderboard
 #   hubot win for <team> - Scores a win for <team> on the leaderboard
 #   hubot loss for <team> - Scores a loss for <team> on the leaderboard
 #   hubot score for <team> - Display the scores for the <team>
@@ -26,19 +27,24 @@ class ScoreKeeper
   constructor: (@robot) ->
     @cache =
       scoreLog: {}
+      teamUrls: {}
       scores: {}
 
     if typeof @robot.brain.data == "object"
       @robot.brain.data.scores ||= {}
       @robot.brain.data.scoreLog ||= {}
+      @robot.brain.data.teamUrls ||= {}
       @cache.scores = @robot.brain.data.scores
       @cache.scoreLog = @robot.brain.data.scoreLog
+      @cache.teamUrls = @robot.brain.data.teamUrls
 
     @robot.brain.on 'loaded', =>
       @robot.brain.data.scores ||= {}
       @robot.brain.data.scoreLog ||= {}
+      @robot.brain.data.teamUrls ||= {}
       @cache.scores = @robot.brain.data.scores
       @cache.scoreLog = @robot.brain.data.scoreLog
+      @cache.teamUrls = @robot.brain.data.teamUrls
 
   getTeam: (team, room) ->
     unless typeof @cache.scores[room] == "object"
@@ -51,17 +57,19 @@ class ScoreKeeper
     @saveScoreLog(team, room)
     @robot.brain.data.scores[room] = @cache.scores[room]
     @robot.brain.data.scoreLog[room] = @cache.scoreLog[room]
+    @robot.brain.data.teamUrls[room] = @cache.teamUrls[room]
     @robot.brain.emit('save', @robot.brain.data)
 
     @cache.scores[room][team]
 
-  addTeam: (team, room) ->
+  addTeam: (team, room, url) ->
     if typeof @cache.scores[room] == "object"
       if typeof @cache.scores[room][team] == "object"
         return false
 
     if @validate(team, room)
       team = @getTeam(team, room)
+      @addTeamUrl(url, team, room)
       score = @saveTeam(team, room)
       return true
 
@@ -89,6 +97,12 @@ class ScoreKeeper
 
     @cache.scoreLog[room][team] = new Date()
 
+  addTeamUrl: (url, team, room) ->
+    unless typeof @cache.teamUrls[room] == "object"
+      @cache.teamUrls[room] = {}
+
+    @cache.teamUrls[room][team] = url
+
   isSpam: (team, room) ->
     @cache.scoreLog[room] ||= {}
 
@@ -111,10 +125,16 @@ class ScoreKeeper
   length: () ->
     @cache.scoreLog.length
 
-  roomRegistrations: (room) ->
+  registrationCount: (room) ->
     unless typeof @cache.scores[room] == "object"
       return 0
     _.size(@cache.scores[room])
+
+  registrations: (room) ->
+    regs = []
+    for name, score of @cache.scores[room]
+      regs.push(name: name, score: score, url: @cache.teamUrls[room][name])
+    _.sortBy( regs, 'name' )
 
   top: (amount, room) ->
     tops = []
@@ -132,10 +152,12 @@ module.exports = (robot) ->
   scoreKeeper = new ScoreKeeper(robot)
   reasonsKeyword = process.env.HUBOT_LEADERBOARD_REASONS or 'raisins'
 
-  robot.respond /register (for\s)+?(.+)/i, (msg) ->
-    name = msg.match[2].trim().toLowerCase()
+  robot.respond /register (.+)?(\sfor\s)+(http\:\/\/.*\.heroku\.com)+/i, (msg) ->
+    name = msg.match[1].trim().toLowerCase()
     room = msg.message.room || 'escape'
-    added = scoreKeeper.addTeam(name, room)
+    url = msg.match[3].trim()
+
+    added = scoreKeeper.addTeam(name, room, url)
 
     if added then msg.send "Your team #{name} has been registered."
 
@@ -165,15 +187,29 @@ module.exports = (robot) ->
     room = msg.message.room || 'escape'
     message = []
 
-    if scoreKeeper.roomRegistrations(room) > 0
+    if scoreKeeper.registrationCount(room) > 0
       tops = scoreKeeper[msg.match[1]](amount, room)
 
       for i in [0..tops.length-1]
-        message.push("#{i+1}. #{tops[i].name} : #{tops[i].score}")
+        message.push("#{i+1}. #{tops[i].name} : #{tops[i].score} ")
 
       if(msg.match[1] == "top")
         graphSize = Math.min(tops.length, Math.min(amount, 20))
         message.splice(0, 0, clark(_.first(_.pluck(tops, "score"), graphSize)))
+    else
+      message.push("No registrations yet.")
+
+    msg.send message.join("\n")
+
+
+  robot.respond /list/i, (msg) ->
+    room = msg.message.room || 'escape'
+    message = []
+
+    if scoreKeeper.registrationCount(room) > 0
+      regs = scoreKeeper.registrations(room)
+      for i in [0..regs.length-1]
+        message.push("#{i+1}. #{regs[i].name} : #{regs[i].url} : #{regs[i].score}  ")
     else
       message.push("No registrations yet.")
 
