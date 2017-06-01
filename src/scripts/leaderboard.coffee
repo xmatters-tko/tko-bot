@@ -8,9 +8,6 @@
 # Configuration:
 #
 # Commands:
-#   hubot register <team> for http://<snake-app>.heroku.com - Register a <team> and <snake-app> on the leaderboard
-#   hubot win for <team> - Scores a win for <team> on the leaderboard
-#   hubot loss for <team> - Scores a loss for <team> on the leaderboard
 #   hubot score for <team> - Display the scores for the <team>
 #   hubot top <amount> - Display the <amount> top teams from the leaderboard, <amount> is optional and defaults to 10
 #   hubot bottom <amount> - Display the <amount> bottom teams from the leaderboard, <amount> is optional and defaults to 10
