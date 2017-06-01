@@ -8,9 +8,6 @@
 # Configuration:
 #
 # Commands:
-#   hubot register <team> for http://<snake-app>.heroku.com - Register a <team> and <snake-app> on the leaderboard
-#   hubot win for <team> - Scores a win for <team> on the leaderboard
-#   hubot loss for <team> - Scores a loss for <team> on the leaderboard
 #   hubot score for <team> - Display the scores for the <team>
 #   hubot top <amount> - Display the <amount> top teams from the leaderboard, <amount> is optional and defaults to 10
 #   hubot bottom <amount> - Display the <amount> bottom teams from the leaderboard, <amount> is optional and defaults to 10
@@ -80,16 +77,16 @@ class ScoreKeeper
       @save(team, room)
       @cache.scores[room][team]
 
-  win: (team, room) ->
+  win: (team, room, points) ->
     if @exists(team, room) && !@isSpam(team, room)
       team = @getTeam(team, room)
-      @cache.scores[room][team]++
+      @cache.scores[room][team] = @cache.scores[room][team] + points;
       @saveTeam(team, room)
 
-  loss: (team, room) ->
+  loss: (team, room, points) ->
     if @exists(team, room) && !@isSpam(team, room)
       team = @getTeam(team, room)
-      @cache.scores[room][team]--
+      @cache.scores[room][team] = @cache.scores[room][team] - points;
       @saveTeam(team, room)
 
   scoreForTeam: (team, room) -> 
@@ -170,17 +167,33 @@ module.exports = (robot) ->
     scoreKeeper.addTeam(name, room, url)
     msg.send "Your team #{name} has been registered for #{url}."
 
+  robot.respond /add (\d+) (points\s)+?(for\s)+?(.+)/i, (msg) ->
+    points = msg.match[1]
+    name = msg.match[4].trim().toLowerCase()
+    room = msg.message.room || 'escape'
+    newScore = scoreKeeper.win(name, room, points)
+
+    if newScore? then msg.send "Team #{name} has #{newScore} points."
+
+  robot.respond /minus (\d+) (points\s)+?(for\s)+?(.+)/i, (msg) ->
+    points = msg.match[1]
+    name = msg.match[4].trim().toLowerCase()
+    room = msg.message.room || 'escape'
+    newScore = scoreKeeper.loss(name, room, points)
+
+    if newScore? then msg.send "Team #{name} has #{newScore} points."
+
   robot.respond /win (for\s)+?(.+)/i, (msg) ->
     name = msg.match[2].trim().toLowerCase()
     room = msg.message.room || 'escape'
-    newScore = scoreKeeper.win(name, room)
+    newScore = scoreKeeper.win(name, room, 1)
 
     if newScore? then msg.send "Team #{name} has #{newScore} points."
 
   robot.respond /loss (for\s)+?(.+)/i, (msg) ->
     name = msg.match[2].trim().toLowerCase()
     room = msg.message.room || 'escape'
-    newScore = scoreKeeper.loss(name, room)
+    newScore = scoreKeeper.loss(name, room, 1)
 
     if newScore? then msg.send "Team #{name} has #{newScore} points."
 
