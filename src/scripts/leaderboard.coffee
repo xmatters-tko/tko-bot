@@ -211,6 +211,8 @@ module.exports = (robot) ->
     room = msg.message.room || 'escape'
     message = []
 
+    console.log("FETCHING TOP for: " + room);
+
     if scoreKeeper.registrationCount(room) > 0
       tops = scoreKeeper[msg.match[1]](amount, room)
 
