@@ -17,8 +17,10 @@
 # Author:
 #   xm-craig <cgulliver@xmatters.com>
 
-_ = require('underscore')
-clark = require('clark')
+_           = require('underscore')
+clark       = require('clark')
+querystring = require('querystring')
+
 class ScoreKeeper
   constructor: (@robot) ->
     @cache =
@@ -244,3 +246,16 @@ module.exports = (robot) ->
     if name
       scoreKeeper.removeTeam(name, room)
       msg.send "#{name} deleted from list"
+
+
+  robot.router.get "/#{robot.name}/scores/:room", (req, res) ->
+    room = req.params.room
+
+    query = querystring.parse(req._parsedUrl.query)
+    direction = query.direction || "top"
+    amount = query.limit || 10
+
+    tops = scoreKeeper[direction](amount, room)
+
+    console.log("FETCHING TOP: " + tops);
+    res.end JSON.stringify(tops, null, 2)
